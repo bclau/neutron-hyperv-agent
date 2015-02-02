@@ -17,9 +17,9 @@
 import re
 import time
 
-from neutron.i18n import _LE, _LI
 from neutron.openstack.common import log as logging
 
+from cloudbase.common.i18n import _LE, _LI
 from cloudbase.neutron.hyperv import utils
 from cloudbase.neutron.hyperv import utilsfactory
 from cloudbase.neutron.hyperv import constants
