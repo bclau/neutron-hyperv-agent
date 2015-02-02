@@ -14,27 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import platform
 import re
-import sys
 import time
 
-import eventlet
-eventlet.monkey_patch()
-
 from oslo.config import cfg
-from oslo import messaging
 
-from neutron.agent.common import config
-from neutron.agent import rpc as agent_rpc
-from neutron.agent import securitygroups_rpc as sg_rpc
-from neutron.common import config as common_config
-from neutron.common import constants as n_const
-from neutron.common import topics
-from neutron import context
 from neutron.i18n import _LE, _LI
 from neutron.openstack.common import log as logging
-from neutron.openstack.common import loopingcall
 from neutron.plugins.common import constants as p_const
 
 from cloudbase.neutron.hyperv import utils
@@ -42,137 +28,23 @@ from cloudbase.neutron.hyperv import utilsfactory
 from cloudbase.neutron.hyperv import constants
 
 LOG = logging.getLogger(__name__)
-
-agent_opts = [
-    cfg.ListOpt(
-        'physical_network_vswitch_mappings',
-        default=[],
-        help=_('List of <physical_network>:<vswitch> '
-               'where the physical networks can be expressed with '
-               'wildcards, e.g.: ."*:external"')),
-    cfg.StrOpt(
-        'local_network_vswitch',
-        default='private',
-        help=_('Private vswitch name used for local networks')),
-    cfg.IntOpt('polling_interval', default=2,
-               help=_("The number of seconds the agent will wait between "
-                      "polling for local device changes.")),
-    cfg.BoolOpt('enable_metrics_collection',
-                default=False,
-                help=_('Enables metrics collections for switch ports by using '
-                       'Hyper-V\'s metric APIs. Collected data can by '
-                       'retrieved by other apps and services, e.g.: '
-                       'Ceilometer. Requires Hyper-V / Windows Server 2012 '
-                       'and above')),
-    cfg.IntOpt('metrics_max_retries',
-               default=100,
-               help=_('Specifies the maximum number of retries to enable '
-                      'Hyper-V\'s port metrics collection. The agent will try '
-                      'to enable the feature once every polling_interval '
-                      'period for at most metrics_max_retries or until it '
-                      'succeedes.'))
-]
-
-
 CONF = cfg.CONF
-CONF.register_opts(agent_opts, "AGENT")
-config.register_agent_state_opts_helper(cfg.CONF)
 
 
-class HyperVSecurityAgent(sg_rpc.SecurityGroupAgentRpcMixin):
-
-    def __init__(self, context, plugin_rpc):
-        super(HyperVSecurityAgent, self).__init__()
-        self.context = context
-        self.plugin_rpc = plugin_rpc
-
-        if sg_rpc.is_firewall_enabled():
-            self.init_firewall()
-            self._setup_rpc()
-
-    def _setup_rpc(self):
-        self.topic = topics.AGENT
-        self.endpoints = [HyperVSecurityCallbackMixin(self)]
-        consumers = [[topics.SECURITY_GROUP, topics.UPDATE]]
-
-        self.connection = agent_rpc.create_consumers(self.endpoints,
-                                                     self.topic,
-                                                     consumers)
-
-
-class HyperVSecurityCallbackMixin(sg_rpc.SecurityGroupAgentRpcCallbackMixin):
-
-    target = messaging.Target(version='1.1')
-
-    def __init__(self, sg_agent):
-        super(HyperVSecurityCallbackMixin, self).__init__()
-        self.sg_agent = sg_agent
-
-
-class HyperVNeutronAgent(object):
-    # Set RPC API version to 1.1 by default.
-    target = messaging.Target(version='1.1')
+class HyperVNeutronAgentMixin(object):
 
     def __init__(self):
-        super(HyperVNeutronAgent, self).__init__()
+        super(HyperVNeutronAgentMixin, self).__init__()
         self._utils = utilsfactory.get_hypervutils()
-        self._polling_interval = CONF.AGENT.polling_interval
-        self._load_physical_network_mappings()
         self._network_vswitch_map = {}
         self._port_metric_retries = {}
-        self._set_agent_state()
-        self._setup_rpc()
 
-    def _set_agent_state(self):
-        self.agent_state = {
-            'binary': 'neutron-hyperv-agent',
-            'host': cfg.CONF.host,
-            'topic': n_const.L2_AGENT_TOPIC,
-            'configurations': {'vswitch_mappings':
-                               self._physical_network_mappings},
-            'agent_type': n_const.AGENT_TYPE_HYPERV,
-            'start_flag': True}
+        self._polling_interval = 2
+        self.plugin_rpc = None
 
-    def _report_state(self):
-        try:
-            self.state_rpc.report_state(self.context,
-                                        self.agent_state)
-            self.agent_state.pop('start_flag', None)
-        except Exception:
-            LOG.exception(_LE("Failed reporting state!"))
-
-    def _setup_rpc(self):
-        self.agent_id = 'hyperv_%s' % platform.node()
-        self.topic = topics.AGENT
-        self.plugin_rpc = agent_rpc.PluginApi(topics.PLUGIN)
-        self.sg_plugin_rpc = sg_rpc.SecurityGroupServerRpcApi(topics.PLUGIN)
-
-        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
-
-        # RPC network init
-        self.context = context.get_admin_context_without_session()
-        # Handle updates from service
-        self.endpoints = [self]
-        # Define the listening consumers for the agent
-        consumers = [[topics.PORT, topics.UPDATE],
-                     [topics.NETWORK, topics.DELETE],
-                     [topics.PORT, topics.DELETE],
-                     [constants.TUNNEL, topics.UPDATE]]
-        self.connection = agent_rpc.create_consumers(self.endpoints,
-                                                     self.topic,
-                                                     consumers)
-
-        self.sec_groups_agent = HyperVSecurityAgent(
-            self.context, self.sg_plugin_rpc)
-        report_interval = CONF.AGENT.report_interval
-        if report_interval:
-            heartbeat = loopingcall.FixedIntervalLoopingCall(
-                self._report_state)
-            heartbeat.start(interval=report_interval)
-
-    def _load_physical_network_mappings(self):
+    def _load_physical_network_mappings(self, phys_net_vswitch_mappings):
         self._physical_network_mappings = {}
-        for mapping in CONF.AGENT.physical_network_vswitch_mappings:
+        for mapping in phys_net_vswitch_mappings:
             parts = mapping.split(':')
             if len(parts) != 2:
                 LOG.debug('Invalid physical network mapping: %s', mapping)

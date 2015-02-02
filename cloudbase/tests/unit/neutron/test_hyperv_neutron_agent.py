@@ -196,14 +196,6 @@ class TestHyperVNeutronAgent(base.BaseTestCase):
     def test_treat_devices_removed_ignores_missing_port(self):
         self.mock_treat_devices_removed(False)
 
-    def test_report_state(self):
-        with mock.patch.object(self.agent.state_rpc,
-                               "report_state") as report_st:
-            self.agent._report_state()
-            report_st.assert_called_with(self.agent.context,
-                                         self.agent.agent_state)
-            self.assertNotIn("start_flag", self.agent.agent_state)
-
     def test_main(self):
         with mock.patch.object(hyperv_neutron_agent,
                                'HyperVNeutronAgent') as plugin:
