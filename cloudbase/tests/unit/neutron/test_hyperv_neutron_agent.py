@@ -21,12 +21,12 @@ Unit tests for Windows Hyper-V virtual switch neutron driver
 import mock
 from oslo.config import cfg
 
-from neutron.plugins.hyperv.agent import hyperv_neutron_agent
-from neutron.plugins.hyperv.agent import utilsfactory
-from neutron.tests import base
+from cloudbase.neutron.hyperv import hyperv_neutron_agent
+from cloudbase.neutron.hyperv import utilsfactory
+from cloudbase.tests import base
 
 cfg.CONF.import_opt('enable_metrics_collection',
-                    'neutron.plugins.hyperv.agent.hyperv_neutron_agent',
+                    'cloudbase.neutron.hyperv.hyperv_neutron_agent',
                     'AGENT')
 
 
