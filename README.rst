@@ -1,5 +1,5 @@
-python-neutron-plugin-hyperv
-============================
+neutron-hyperv-agent
+====================
 
 This is the downstream Hyper-V Neutron Agent.
 
@@ -7,11 +7,44 @@ This is the downstream Hyper-V Neutron Agent.
 How to Install
 --------------
 
-Run the following command to install the plugin in the system:
+Run the following command to install the agent in the system:
 
 ::
 
-    C:\python-neutron-plugin-hyperv> python setup.py install
+    C:\neutron-hyperv-agent> python setup.py install
+
+To properly use the agent, you will have to set the core_plugin in
+``neutron.conf``to:
+
+::
+
+    core_plugin = neutron.plugins.ml2.plugin.Ml2Plugin
+
+Additionally, you will have to add Hyper-V as a mechanism in ``ml2_conf.ini``:
+
+::
+
+    mechanism_drivers = openvswitch,hyperv
+
+Finally, make sure the tenant_network_types field contains network types
+supported by Hyper-V: local, flat, vlan.
+
+
+Tests
+-----
+
+You will have to install the test dependencies first to be able to run the
+tests.
+
+::
+
+    C:\neutron-hyperv-agent> pip install -r test-requirements.txt
+
+You can run the unit tests with the following command.
+
+::
+
+    C:\neutron-hyperv-agent> nosetests cloudbase\tests
 
 
 HACKING
