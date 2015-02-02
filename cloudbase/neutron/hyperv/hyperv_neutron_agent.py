@@ -20,7 +20,6 @@ import time
 from oslo.config import cfg
 
 from neutron.openstack.common import log as logging
-from neutron.plugins.common import constants as p_const
 
 from cloudbase.common.i18n import _LE, _LI
 from cloudbase.neutron.hyperv import utils
@@ -93,7 +92,7 @@ class HyperVNeutronAgentMixin(object):
             segmentation_id, port['admin_state_up'])
 
     def _get_vswitch_name(self, network_type, physical_network):
-        if network_type != p_const.TYPE_LOCAL:
+        if network_type != constants.TYPE_LOCAL:
             vswitch_name = self._get_vswitch_for_physical_network(
                 physical_network)
         else:
@@ -108,10 +107,10 @@ class HyperVNeutronAgentMixin(object):
 
         vswitch_name = self._get_vswitch_name(network_type, physical_network)
 
-        if network_type in [p_const.TYPE_VLAN, p_const.TYPE_FLAT]:
+        if network_type in [constants.TYPE_VLAN, constants.TYPE_FLAT]:
             #Nothing to do
             pass
-        elif network_type == p_const.TYPE_LOCAL:
+        elif network_type == constants.TYPE_LOCAL:
             #TODO(alexpilotti): Check that the switch type is private
             #or create it if not existing
             pass
@@ -149,17 +148,17 @@ class HyperVNeutronAgentMixin(object):
 
         self._utils.connect_vnic_to_vswitch(map['vswitch_name'], port_id)
 
-        if network_type == p_const.TYPE_VLAN:
+        if network_type == constants.TYPE_VLAN:
             LOG.info(_LI('Binding VLAN ID %(segmentation_id)s '
                          'to switch port %(port_id)s'),
                      dict(segmentation_id=segmentation_id, port_id=port_id))
             self._utils.set_vswitch_port_vlan_id(
                 segmentation_id,
                 port_id)
-        elif network_type == p_const.TYPE_FLAT:
+        elif network_type == constants.TYPE_FLAT:
             #Nothing to do
             pass
-        elif network_type == p_const.TYPE_LOCAL:
+        elif network_type == constants.TYPE_LOCAL:
             #Nothing to do
             pass
         else:
