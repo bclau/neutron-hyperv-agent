@@ -196,13 +196,3 @@ class TestHyperVNeutronAgent(base.BaseTestCase):
     def test_treat_devices_removed_ignores_missing_port(self):
         self.mock_treat_devices_removed(False)
 
-    def test_main(self):
-        with mock.patch.object(hyperv_neutron_agent,
-                               'HyperVNeutronAgent') as plugin:
-            with mock.patch.object(hyperv_neutron_agent,
-                                   'common_config') as common_config:
-                hyperv_neutron_agent.main()
-
-                self.assertTrue(common_config.init.called)
-                self.assertTrue(common_config.setup_logging.called)
-                plugin.assert_has_calls([mock.call().daemon_loop()])
