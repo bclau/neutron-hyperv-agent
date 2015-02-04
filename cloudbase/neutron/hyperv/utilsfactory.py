@@ -17,9 +17,8 @@ import sys
 
 from oslo.config import cfg
 
-from neutron.openstack.common import log as logging
-
 from cloudbase.common.i18n import _LW
+from cloudbase.common import log as logging
 from cloudbase.neutron.hyperv import utils
 from cloudbase.neutron.hyperv import utilsv2
 

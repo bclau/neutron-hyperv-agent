@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.openstack.common import log as logging
-
 from cloudbase.common.i18n import _LE, _LI
+from cloudbase.common import log as logging
 from cloudbase.neutron.hyperv import utilsfactory
 from cloudbase.neutron.hyperv import utilsv2
 
